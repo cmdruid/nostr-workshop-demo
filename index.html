@@ -31,25 +31,6 @@
     var subId   = crypto.randomUUID()
     var filter  = { "authors": [ pubKey ] }
 
-    async function getSignedEvent(event, privateKey) {
-      /** Produce a signed hash of our event, attach it
-       *  to the event object, then serialize the result.
-       */
-      var eventData = JSON.stringify([
-        0,		                // this is reserved for future use
-        event['pubkey'],	    // yours, not someone else’s
-        event['created_at'],  // unix timestamp
-        event['kind'],		    // message “kind” – public notes are kind 1
-        event['tags'],		    // tags – identify replies or recipients
-        event['content']      // your noteS
-      ])
-
-      event.id  = sha256( eventData ).toString( 'hex' )
-      event.sig = await schnorr.sign( event.id, privateKey )
-      
-      return event
-    }
-
     socket.addEventListener('open', async function( e ) {
       // Log to console once we have an open connection. 
       console.log( "connected to " + relay )
@@ -123,6 +104,25 @@
 
       console.log('content:', content)
     })
+
+    async function getSignedEvent(event, privateKey) {
+      /** Produce a signed hash of our event, attach it
+       *  to the event object, then serialize the result.
+       */
+      var eventData = JSON.stringify([
+        0,		                // Reserved for future use.
+        event['pubkey'],	    // The sender's public key
+        event['created_at'],  // Unix timestamp.
+        event['kind'],		    // Message “kind” or type.
+        event['tags'],		    // Tags – identify replies or recipients.
+        event['content']      // Your note contents.
+      ])
+
+      event.id  = sha256( eventData ).toString( 'hex' )
+      event.sig = await schnorr.sign( event.id, privateKey )
+      
+      return event
+    }
 
     // EXTRA: END-TO-END Encryption!
 
