@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -9,6 +10,7 @@
   <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
   <script src="https://bundle.run/browserify-cipher@1.0.1"></script>
 </head>
+
 <body>
   <script>
     // Define some useful libraries and functions.
@@ -49,7 +51,7 @@
       return event
     }
 
-    socket.addEventListener('open', async function( event ) {
+    socket.addEventListener('open', async function( e ) {
       // Log to console once we have an open connection. 
       console.log( "connected to " + relay )
       
@@ -72,6 +74,7 @@
       var signedEvent = await getSignedEvent(event, privKey)
       console.log('signedEvent:', signedEvent)
 
+      // Serialize and send our message.
       socket.send(JSON.stringify([ "EVENT", signedEvent ]))
 
       // BONUS: Send an encrypted message!
@@ -81,10 +84,12 @@
 
       var shareKey1 = await getSharedKey(privKey, pubKey2)
       var shareKey2 = await getSharedKey(privKey2, pubKey)
-      var msg = "this message is super secret!"
-      var encrypted = await encrypt(msg, shareKey1)
+      
+      var message   = "this message is super secret!"
+      var encrypted = await encrypt(message, shareKey1)
 
-      console.log(encrypted)
+      // Don't do this in production.
+      window.shareKey2 = shareKey2
 
       var event2 = {
         "content"    : encrypted,
@@ -98,70 +103,80 @@
       var signedEvent2 = await getSignedEvent(event2, privKey)
       console.log('signedEvent2:', signedEvent2)
 
-      socket.send(JSON.stringify([ "EVENT", signedEvent ]))
-
+      // Serialize and send our message.
+      socket.send(JSON.stringify([ "EVENT", signedEvent2 ]))
     });
 
-    socket.addEventListener( 'message', function( message ) {
+    socket.addEventListener( 'message', async function( message ) {
+      // Unpack our message data.
       var [ type, subId, event ] = JSON.parse( message.data );
       var { kind, content } = event || {}
 
-      console.log('message:', event)
+      // If event is undefined, return.
+      if (!event) return
 
+      console.log('message:', event)
+      
       if (kind === 4) {
-        content = decrypt(content, shareKey2)
+        // We have an encrypted message!
+        content = await decrypt(content, window.shareKey2)
       }
 
-      console.log(content)
+      console.log('content:', content)
     })
 
     // EXTRA: END-TO-END Encryption!
 
     async function getSharedKey(privkey, pubkey) {
+      /** Derive a shared key-pair that is NIP-04 compliant and 
+       *  import as a CryptoKey object (for Webcrypto library).
+       */
       var key = getSharedSecret(privkey, '02' + pubkey, true).substring(2)
       var options = { name: 'AES-CBC' }
       var usage   = [ 'encrypt', 'decrypt' ]
+
       return crypto.subtle.importKey('raw', hexToBytes(key), options, true, usage)
     }
     
     async function encrypt(message, keyFile ) {
+      /** Encrypt a message using a CryptoKey object,
+       *  and format a NIP-04 compliant string output.
+       */
       var iv = crypto.getRandomValues( new Uint8Array(16) )
       var ec = new TextEncoder()
-      var msg = ec.encode(message)
 
-      var cipherText = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, keyFile, msg)
+      var cipherText = await crypto.subtle.encrypt(
+        { name: 'AES-CBC', iv }, 
+        keyFile, 
+        ec.encode(message)
+      )
 
-      console.log(keyFile, ec.encode(message), cipherText)
-
-
-      return bytesToBase64(cipherText) + '?iv=' + bytesToBase64(iv)
+      return btoa(bytesToHex(new Uint8Array(cipherText))) 
+        + '?iv=' 
+        + btoa(bytesToHex(iv))
     }
     
     async function decrypt(encodedText, keyFile) {
-      /* Decrypt a string using the symmetric encryption key. */
+      /** Decode an encrypted message using NIP-04 spec,
+       *  and decrypt using a CryptoKey object.
+       */
       var [ cipherText, iv ] = encodedText.split('?iv=')
-      var byteArray  = hexToBtyes(btoa(encodedText))
-      var cipherText = byteArray.slice(16, byteArray.byteLength + 1)
-      var iv = byteArray.slice(0, 16)
       var dc = new TextDecoder()
       
-      console.log('test', cipherText, iv)
       var plainText = await crypto.subtle.decrypt(
-        { name: 'AES-CBC', iv: base64ToBytes(iv) }, 
-        keyFile, 
-        base64ToBytes(cipherText)
+        { name: 'AES-CBC', iv: hexToBytes(atob(iv)) }, 
+        keyFile,
+        hexToBytes(atob(cipherText))
       )
-
-      console.log(plainText)
       
       return dc.decode(plainText)
     }
 
     function bytesToHex(byteArray) {
-      return Array
-        .from(byteArray)
-        .map((byte) => (byte & 0xff).toString(16).padStart(2, '0'))
-        .join('')
+      for (var arr = [], i = 0; i < byteArray.length; i++) {
+        arr.push(byteArray[i].toString(16).padStart(2, '0'))
+      }
+      return arr.join('')
     }
 
     function hexToBytes(str) {
@@ -170,18 +185,16 @@
 	    }
       return Uint8Array.from(arr)
     }
-
-    function bytesToBase64(byteArray) {
-      console.log(byteArray)
-      return Array
-        .from(byteArray)
-        .map((byte) => String.fromCharCode(byte))
-        .join('')
-    }
-
-    function base64ToBytes(str) {
-      return new Uint8Array([ ...atob(str) ].map(c => c.charCodeAt(0)))
-    }
   </script>
+
+  <h1>Nostr Demo</h1>
+  <pre>Check your console output for results!</pre>
+  <pre>Mac: Command+Option+J || Windows/Linux: Control+Shift+J</pre>
+
+  <style>
+    body {
+      text-align: center;
+    }
+  </style>
 </body>
 </html>

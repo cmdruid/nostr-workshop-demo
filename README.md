@@ -1,2 +1,15 @@
 # nostr-workshop-demo
 Basic demonstration of a Nostr web-socket client embedded in the browser, with links and resources.
+
+## How to use.
+Open the HTML file using your favorite browser. Please check the developer console for more information.
+
+## Resources
+**Nostr Protocol Implementation Proposals (NIPS)**  
+https://github.com/nostr-protocol/nips  
+
+**Nostr Army Knife: Test serialized events for debugging.**  
+https://nostr-army-knife.netlify.app  
+
+**Secp256k1 Library**  
+https://github.com/paulmillr/noble-secp256k1  
