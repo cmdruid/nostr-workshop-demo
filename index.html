@@ -103,6 +103,9 @@
       }
 
       console.log('content:', content)
+
+      document.querySelector('#console')
+        .innerHTML += `<pre>> ${content}</pre>`
     })
 
     async function getSignedEvent(event, privateKey) {
@@ -187,14 +190,27 @@
   </script>
 
   <h1>Nostr Workshop Demo</h1>
-  <pre>Check your console output for results!</pre>
+  <pre>Check your console output for more results!</pre>
   <pre>Mac: Command+Option+J || Windows/Linux: Control+Shift+J</pre>
+
+  <div id="console">
+
+  </div>
 
   <style>
     body {
       color: whitesmoke;
       background-color: #252525;
       text-align: center;
+    }
+    #console {
+      border: 1px solid whitesmoke;
+      height: 300px;
+      max-width: 500px;
+      margin: 1rem auto;
+      padding: 1rem;
+      text-align: left;
+      line-height: 0.5rem;
     }
   </style>
 </body>
