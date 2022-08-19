@@ -28,7 +28,7 @@
     var socket  = new WebSocket( relay )
 
     // Configure our subscription settings.
-    var subId   = var subId = bitcoinjs.ECPair.makeRandom().privateKey.toString( "hex" )
+    var subId	= bitcoinjs.ECPair.makeRandom().privateKey.toString( "hex" )
     var filter  = { "authors": [ pubKey ] }
 
     socket.addEventListener('open', async function( e ) {
