@@ -4,6 +4,9 @@ Basic demonstration of a Nostr web-socket client embedded in the browser, with l
 ## How to use.
 Open the HTML file using your favorite browser. Please check the developer console for more information.
 
+Live demo available here:  
+https://cmdruid.github.io/nostr-workshop-demo  
+
 ## Resources
 **Nostr Protocol Implementation Proposals (NIPS)**  
 https://github.com/nostr-protocol/nips  
