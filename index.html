@@ -13,36 +13,38 @@
 <body>
   <script>
     // Define some useful libraries and functions.
-    var { getSharedSecret, schnorr, utils } = nobleSecp256k1
-    var crypto  = window.crypto 
-    var getRand = size => crypto.getRandomValues(new Uint8Array(size))
-    var sha256  = bitcoinjs.crypto.sha256
+    const { getSharedSecret, schnorr, utils } = nobleSecp256k1
+    const crypto  = window.crypto 
+    const getRand = size => crypto.getRandomValues(new Uint8Array(size))
+    const sha256  = bitcoinjs.crypto.sha256
+    const ec = new TextEncoder()
+    const dc = new TextDecoder()
 
     // Generate a key-pair for digital signatures.
-		var keypair = bitcoinjs.ECPair.makeRandom()
-		var privKey = keypair.privateKey.toString( "hex" )
-		var pubKey  = keypair.publicKey.toString( "hex" ).substring( 2 )
+		const keypair = bitcoinjs.ECPair.makeRandom()
+		const privKey = keypair.privateKey.toString('hex')
+		const pubKey  = keypair.publicKey.toString('hex').substring(2)
 
     // Configure a new websocket connection.
-    var relay   = "wss://nostr-relay.wlvs.space"
-    var socket  = new WebSocket( relay )
+    const relay   = "wss://nostr-relay.wlvs.space"
+    const socket  = new WebSocket( relay )
 
     // Configure our subscription settings.
-    var subId   = crypto.randomUUID()
-    var filter  = { "authors": [ pubKey ] }
+    const subId   = crypto.randomUUID()
+    const filter  = { "authors": [ pubKey ] }
 
     socket.addEventListener('open', async function( e ) {
       // Log to console once we have an open connection. 
       console.log( "connected to " + relay )
       
       // Craft our subscription request.
-      var subscription = [ "REQ", subId, filter ]
+      const subscription = [ "REQ", subId, filter ]
       console.log('Subscription:', subscription)
 
       socket.send(JSON.stringify( subscription ));
 
       // Craft our event message.
-      var event = {
+      const event = {
         "content"    : "this workshop is awesome!",
         "created_at" : Math.floor( Date.now() / 1000 ),
         "kind"       : 1,
@@ -51,31 +53,31 @@
       }
 
       // Sign our message.
-      var signedEvent = await getSignedEvent(event, privKey)
+      const signedEvent = await getSignedEvent(event, privKey)
       console.log('signedEvent:', signedEvent)
 
       // Serialize and send our message.
       socket.send(JSON.stringify([ "EVENT", signedEvent ]))
 
       // BONUS: Send an encrypted message!
-		  var keypair2 = bitcoinjs.ECPair.makeRandom()
-		  var privKey2 = keypair2.privateKey.toString( "hex" )
-		  var pubKey2  = keypair2.publicKey.toString( "hex" ).substring( 2 )
+		  const keypair2 = bitcoinjs.ECPair.makeRandom()
+		  const privKey2 = keypair2.privateKey.toString('hex')
+		  const pubKey2  = keypair2.publicKey.toString('hex').substring(2)
 
-      var shareKey1 = await getSharedKey(privKey, pubKey2)
-      var shareKey2 = await getSharedKey(privKey2, pubKey)
+      const shareKey1 = await getSharedKey(privKey, pubKey2)
+      const shareKey2 = await getSharedKey(privKey2, pubKey)
       
-      var message   = "this message is super secret!"
-      var encrypted = await encrypt(message, shareKey1)
+      const message   = "this message is super secret!"
+      const encrypted = await encrypt(message, shareKey1)
 
       // Don't do this in production.
       window.shareKey2 = shareKey2
 
-      var event2 = {
+      const event2 = {
         "content"    : encrypted,
-        "created_at" : Math.floor( Date.now() / 1000 ),
+        "created_at" : Math.floor(Date.now() / 1000),
         "kind"       : 4,
-        "tags"       : [ [ 'p', pubKey2 ] ],
+        "tags"       : [[ 'p', pubKey2 ]],
         "pubkey"     : pubKey,
       }
 
@@ -121,8 +123,8 @@
         event['content']      // Your note contents.
       ])
 
-      event.id  = sha256( eventData ).toString( 'hex' )
-      event.sig = await schnorr.sign( event.id, privateKey )
+      event.id  = sha256(eventData).toString('hex')
+      event.sig = await schnorr.sign(event.id, privateKey)
       
       return event
     }
@@ -139,21 +141,20 @@
 
       return crypto.subtle.importKey('raw', hexToBytes(key), options, true, usage)
     }
-    
-    async function encrypt(message, keyFile ) {
+
+    async function encrypt(message, keyFile) {
       /** Encrypt a message using a CryptoKey object,
        *  and format a NIP-04 compliant string output.
        */
-      var iv = crypto.getRandomValues( new Uint8Array(16) )
-      var ec = new TextEncoder()
+      const iv = crypto.getRandomValues(new Uint8Array(16))
 
-      var cipherText = await crypto.subtle.encrypt(
+      const cipherText = await crypto.subtle.encrypt(
         { name: 'AES-CBC', iv }, 
         keyFile, 
         ec.encode(message)
-      )
+      ).then((bytes) => new Uint8Array(bytes))
 
-      return btoa(bytesToHex(new Uint8Array(cipherText))) 
+      return btoa(bytesToHex(cipherText))
         + '?iv=' 
         + btoa(bytesToHex(iv))
     }
@@ -162,10 +163,9 @@
       /** Decode an encrypted message using NIP-04 spec,
        *  and decrypt using a CryptoKey object.
        */
-      var [ cipherText, iv ] = encodedText.split('?iv=')
-      var dc = new TextDecoder()
+      const [ cipherText, iv ] = encodedText.split('?iv=')
       
-      var plainText = await crypto.subtle.decrypt(
+      const plainText = await crypto.subtle.decrypt(
         { name: 'AES-CBC', iv: hexToBytes(atob(iv)) }, 
         keyFile,
         hexToBytes(atob(cipherText))
